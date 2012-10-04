@@ -167,6 +167,54 @@
   0x5D :repeater-off
   0x5E :repeater-on
   0x60 :hatch
+  0x61 :mob-egg
+  0x62 :stone-bricks
+  0x63 :huge-brown-mushroom
+  0x64 :huge-red-mushroom
+  0x65 :iron-bar
+  0x66 :glass-pane
+  0x67 :melon
+  0x68 :pumpkin-stem
+  0x69 :melon-stem
+  0x6A :vines
+  0x6B :fence-gate
+  0x6C :brick-stairs
+  0x6D :stone-brick-stairs
+  0x6E :mycelium
+  0x6F :lily-pad
+  0x70 :nether-brick
+  0x71 :nether-brick-fence
+  0x72 :nether-brick-stairs
+  0x73 :nether-wart
+  0x74 :enchantment-table
+  0x75 :brewing-stand
+  0x76 :cauldron
+  0x77 :end-portal
+  0x78 :end-portal-frame
+  0x79 :end-stone
+  0x7A :dragon-egg
+  0x7B :redstone-lamp-on
+  0x7C :redstone-lamp-off
+  0x7D :double-slab-wooden
+  0x7E :slab-wooden
+  0x7F :cocoa-pod
+  0x80 :sandstone-stairs
+  0x81 :emerald-ore
+  0x82 :ender-chest
+  0x83 :tripwire-hook
+  0x84 :tripwire
+  0x85 :emerald-block
+  0x86 :spruce-wood-stairs
+  0x87 :birch-wood-stairs
+  0x88 :jungle-wood-stairs
+  0x89 :command-block
+  0x8A :beacon
+  0x8B :cobblestone-wall
+  0x8C :flower-pot
+  0x8D :carrots
+  0x8E :potatoes
+  0x8F :wooden-button
+  0x90 :head                                                                                                                                                                                                                                                                            
 })
 (def block-ids (invert block-types))
 (def non-solid-blocks #{ :air :sign-wall })
@@ -277,7 +325,57 @@
   0x165 :cookie
   0x166 :map
   0x167 :shears
+  0x168 :melon-slice
+  0x169 :pumpkin-seeds
+  0x16A :melon-seeds
+  0x16B :raw-beef
+  0x16C :steak
+  0x16D :raw-chicken
+  0x16E :cooked-chicken
+  0x16F :rotten-flesh
+  0x170 :ender-pearl
+  0x171 :blaze-rod
+  0x172 :ghast-tear
+  0x173 :gold-nugget
+  0x174 :nether-wart
+  0x175 :potions
+  0x176 :glass-bottle
+  0x177 :spider-eye
+  0x178 :fermented-spider-eye
+  0x179 :blaze-powder
+  0x17A :magma-cream
+  0x17B :brewing-stand
+  0x17C :cauldron
+  0x17D :eye-of-ender
+  0x17E :glistering-melon
+  0x17F :spawn-egg
+  0x180 :bottle-of-enchanting
+  0x181 :fire-charge
+  0x182 :book-and-quill
+  0x183 :written-book
+  0x184 :emerald
+  0x185 :item-frame
+  0x186 :flower-pot
+  0x187 :carrot
+  0x188 :potato
+  0x189 :baked-potato
+  0x18A :poisonous-potato
+  0x18B :map
+  0x18C :golden-carrot
+  0x18D :head
+  0x18E :carrot-on-a-stick
+  0x18F :nether-star
+  0x190 :pumpkin-pie
   0x8D0 :record-gold
-  0x8D1 :record-green
+  0x8D1 :record-cat
+  0x8D2 :record-blocks
+  0x8D3 :record-chirp
+  0x8D4 :record-far
+  0x8D5 :record-mall
+  0x8D6 :record-mellohi
+  0x8D7 :record-stal
+  0x8D8 :record-strad
+  0x8D9 :record-ward 
+  0x8DA :record-11                                                                                                                                                     
 })
 (def item-ids (invert item-types))
