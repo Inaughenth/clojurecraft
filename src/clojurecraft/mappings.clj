@@ -24,7 +24,8 @@
   0x12 :animation
   0x13 :entityaction
   0x14 :namedentityspawn
-  0x15 :pickupspawn
+;  0x15 :pickupspawn -- changed in 1.3.2?
+  0x15 :droppeditemspawn                 
   0x16 :collectitem
   0x17 :addobjectvehicle
   0x18 :mobspawn
@@ -37,19 +38,24 @@
   0x20 :entitylook
   0x21 :entitylookandrelativemove
   0x22 :entityteleport
+  0x23 :entityheadlook                   
   0x26 :entitystatus
   0x27 :attachentity
   0x28 :entitymetadata
   0x29 :entityeffect
   0x2A :removeentityeffect
   0x2B :experience
-  0x32 :prechunk
+  0x32 :prechunk ;missing in 1.3.2?
   0x33 :mapchunk
-  0x34 :multiblockchange
+  0x34 :multiblockchange ;missing in 1.3.2?
   0x35 :blockchange
-  0x36 :playnoteblock
+;  0x36 :playnoteblock --changed in 1.3.2?
+  0x36 :blockaction                 
+  0x37 :blockbreakanimation
+  0x38 :mapchunckbulk                   
   0x3C :explosion
   0x3D :soundeffect
+  0x3E :namedsoundeffect                   
   0x46 :newinvalidstate
   0x47 :thunderbolt
   0x64 :openwindow
@@ -57,15 +63,25 @@
   0x66 :windowclick
   0x67 :setslot
   0x68 :windowitems
-  0x69 :updateprogressbar
+;  0x69 :updateprogressbar  --changed in 1.3.2?
+  0x69 :updatewindowproperty                 
   0x6A :transaction
   0x6B :creativeinventoryaction
   0x6C :enchantitem
   0x82 :updatesign
-  0x83 :mapdata
+;  0x83 :mapdata  --changed in 1.3.2?
+  0x83 :itemdata
+  0x84 :updatetileentity                
   0xC8 :incrementstatistic
   0xC9 :playerlistitem
+  0xCA :playerabilities
+  0xCB :tabcomplete
+  0xCC :localeandviewdistance
+  0xCD :clientstatuses
   0xFA :pluginmessage
+  0xFC :encryptionkeyresponse
+  0xFD :encryptionkeyrequest
+  0xFE :serverlistping
   0xFF :disconnectkick
 })
 (def packet-ids (invert packet-types))
@@ -74,86 +90,86 @@
   -1   nil
   0x00 :air
   0x01 :stone
-  0x02 :dirt-grassy
+  0x02 :grass
   0x03 :dirt
   0x04 :cobblestone
-  0x05 :planks
-  0x06 :sapling
+  0x05 :wooden-planks
+  0x06 :saplings
   0x07 :bedrock
   0x08 :water
-  0x09 :stationary-water
+  0x09 :water-stationary
   0x0A :lava
-  0x0B :stationary-lava
+  0x0B :lava-stationary
   0x0C :sand
   0x0D :gravel
-  0x0E :gold-ore
-  0x0F :iron-ore
-  0x10 :coal-ore
+  0x0E :ore-gold
+  0x0F :ore-iron
+  0x10 :ore-coal
   0x11 :wood
   0x12 :leaves
   0x13 :sponge
   0x14 :glass
-  0x15 :lapis-ore
-  0x16 :lapis-block
+  0x15 :ore-lapis-lazuli
+  0x16 :block-lapis-lazuli
   0x17 :dispenser
   0x18 :sandstone
-  0x19 :note
+  0x19 :block-note
   0x1A :bed
-  0x1B :powered-rail
-  0x1C :detector-rail
-  0x1D :sticky-piston
+  0x1B :rail-powered
+  0x1C :rail-detector
+  0x1D :piston-sticky
   0x1E :cobweb
   0x1F :tall-grass
-  0x20 :shrub
+  0x20 :dead-bush
   0x21 :piston
-  0x22 :piston-head
+  0x22 :piston-extension
   0x23 :wool
-  0x25 :flower-yellow
-  0x26 :flower-red
+  0x25 :dandelion
+  0x26 :rose
   0x27 :mushroom-brown
   0x28 :mushroom-red
-  0x29 :gold-block
-  0x2A :iron-block
-  0x2B :double-slab
+  0x29 :block-gold
+  0x2A :block-iron
+  0x2B :double-slabs
   0x2C :slab
-  0x2D :brick
+  0x2D :bricks
   0x2E :tnt
   0x2F :books
-  0x30 :mossy-cobblestone
+  0x30 :stone-mossy
   0x31 :obsidian
   0x32 :torch
   0x33 :fire
-  0x34 :spawner
-  0x35 :wood-stairs
+  0x34 :mob-spawner
+  0x35 :stairs-oak
   0x36 :chest
   0x37 :redstone-wire
-  0x38 :diamond-ore
-  0x39 :diamond-block
+  0x38 :ore-diamond
+  0x39 :block-diamond
   0x3A :crafting-table
-  0x3B :wheat
+  0x3B :wheat-seeds
   0x3C :farmland
   0x3D :furnace
   0x3E :furnace-lit
   0x3F :sign-standing
-  0x40 :wood-door
+  0x40 :door-wooden
   0x41 :ladder
   0x42 :rail
-  0x43 :cobblestone-stairs
+  0x43 :stairs-cobblestone
   0x44 :sign-wall
   0x45 :lever
-  0x46 :stone-plate
-  0x47 :iron-door
+  0x46 :plate-stone
+  0x47 :door-iron
   0x48 :wood-plate
-  0x49 :redstone-ore
-  0x4A :redstone-ore-glowing
-  0x4B :redstone-torch-off
-  0x4C :redstone-torch-on
-  0x4D :stone-button
+  0x49 :ore-redstone
+  0x4A :ore-redstone-glowing
+  0x4B :torch-redstone-off
+  0x4C :torch-redstone-on
+  0x4D :button-stone
   0x4E :snow
   0x4F :ice
-  0x50 :snow-block
+  0x50 :block-snow
   0x51 :cactus
-  0x52 :clay
+  0x52 :block-clay
   0x53 :reeds
   0x54 :jukebox
   0x55 :fence
@@ -169,22 +185,22 @@
   0x60 :hatch
   0x61 :mob-egg
   0x62 :stone-bricks
-  0x63 :huge-brown-mushroom
-  0x64 :huge-red-mushroom
-  0x65 :iron-bar
+  0x63 :mushroom-brown-huge
+  0x64 :mushroom-red-huge
+  0x65 :bar-iron
   0x66 :glass-pane
   0x67 :melon
-  0x68 :pumpkin-stem
-  0x69 :melon-stem
+  0x68 :stem-pumpkin
+  0x69 :stem-melon
   0x6A :vines
   0x6B :fence-gate
   0x6C :brick-stairs
-  0x6D :stone-brick-stairs
+  0x6D :stairs-stone-brick
   0x6E :mycelium
   0x6F :lily-pad
   0x70 :nether-brick
-  0x71 :nether-brick-fence
-  0x72 :nether-brick-stairs
+  0x71 :fence-nether-brick
+  0x72 :stairs-nether-brick
   0x73 :nether-wart
   0x74 :enchantment-table
   0x75 :brewing-stand
@@ -198,22 +214,22 @@
   0x7D :double-slab-wooden
   0x7E :slab-wooden
   0x7F :cocoa-pod
-  0x80 :sandstone-stairs
-  0x81 :emerald-ore
-  0x82 :ender-chest
+  0x80 :stairs-sandstone
+  0x81 :ore-emerald
+  0x82 :chest-ender
   0x83 :tripwire-hook
   0x84 :tripwire
   0x85 :emerald-block
-  0x86 :spruce-wood-stairs
-  0x87 :birch-wood-stairs
-  0x88 :jungle-wood-stairs
+  0x86 :stairs-wood-spruce
+  0x87 :stairs-wood-birch
+  0x88 :stairs-wood-jungle
   0x89 :command-block
   0x8A :beacon
-  0x8B :cobblestone-wall
+  0x8B :wall-cobblestone
   0x8C :flower-pot
   0x8D :carrots
   0x8E :potatoes
-  0x8F :wooden-button
+  0x8F :button-wooden
   0x90 :head                                                                                                                                                                                                                                                                            
 })
 (def block-ids (invert block-types))
@@ -221,81 +237,81 @@
 
 (def item-types {
   -1    nil
-  0x100 :iron-shovel
-  0x101 :iron-pick
-  0x102 :iron-axe
+  0x100 :shovel-iron
+  0x101 :pick-iron
+  0x102 :axe-iron
   0x103 :flint-and-steel
   0x104 :apple
   0x105 :box
   0x106 :arrow
   0x107 :coal
   0x108 :diamond
-  0x109 :iron-ingot
-  0x10A :gold-ingot
-  0x10B :gold-sword
-  0x10C :wood-sword
-  0x10D :wood-shovel
-  0x10E :wood-pick
-  0x10F :wood-axe
+  0x109 :ingot-iron
+  0x10A :ingot-gold
+  0x10B :sword-gold
+  0x10C :sword-wood
+  0x10D :shovel-wood
+  0x10E :pick-wood
+  0x10F :axe-wood
   0x110 :stone-sword
   0x111 :stone-shovel
   0x112 :stone-pick
   0x113 :stone-axe
-  0x114 :diamond-sword
-  0x115 :diamond-shovel
-  0x116 :diamond-pick
-  0x117 :diamond-axe
+  0x114 :sword-diamond
+  0x115 :shovel-diamond
+  0x116 :pick-diamond
+  0x117 :axe-diamond
   0x118 :stick
   0x119 :bowl
   0x11A :mushroom-stew
-  0x11B :gold-sword
-  0x11C :gold-shovel
-  0x11D :gold-pick
-  0x11E :gold-axe
+  0x11B :sword-gold
+  0x11C :shovel-gold
+  0x11D :pick-gold
+  0x11E :axe-gold
   0x11F :string
   0x120 :feather
   0x121 :gunpowder
-  0x122 :wood-hoe
-  0x123 :stone-hoe
-  0x124 :iron-hoe
-  0x125 :diamond-hoe
-  0x126 :gold-hoe
+  0x122 :hoe-wood
+  0x123 :hoe-stone
+  0x124 :hoe-iron
+  0x125 :hoe-diamond
+  0x126 :hoe-gold
   0x127 :seeds
   0x128 :wheat
   0x129 :bread
-  0x12A :leather-helm
-  0x12B :leather-chestplate
-  0x12C :leather-leggings
-  0x12D :leather-boots
-  0x12E :chain-helm
-  0x12F :chain-chestplate
-  0x130 :chain-leggings
-  0x131 :chain-boots
-  0x132 :iron-helm
-  0x133 :iron-chestplate
-  0x134 :iron-leggings
-  0x135 :iron-boots
-  0x136 :diamond-helm
-  0x137 :diamond-chestplate
-  0x138 :diamond-leggings
-  0x139 :diamond-boots
-  0x13A :gold-helm
-  0x13B :gold-chestplate
-  0x13C :gold-leggings
-  0x13D :gold-boots
+  0x12A :helm-leather
+  0x12B :chestplate-leather
+  0x12C :leggings-leather
+  0x12D :boots-leather
+  0x12E :helm-chain
+  0x12F :chestplate-chain
+  0x130 :leggings-chain
+  0x131 :boots-chain
+  0x132 :helm-iron
+  0x133 :chestplate-iron
+  0x134 :leggings-iron
+  0x135 :boots-iron
+  0x136 :helm-diamond
+  0x137 :chestplate-diamond
+  0x138 :leggings-diamond
+  0x139 :bootsdiamond
+  0x13A :helm-gold
+  0x13B :chestplate-gold
+  0x13C :leggings-gold
+  0x13D :boots-gold
   0x13E :flint
   0x13F :pork-raw
   0x140 :pork-cooked
   0x141 :painting
-  0x142 :golden-apple
+  0x142 :apple-golden
   0x143 :sign
-  0x144 :wood-door
+  0x144 :door-wood
   0x145 :bucket
   0x146 :bucket-water
   0x147 :bucket-lava
   0x148 :minecart
   0x149 :saddle
-  0x14A :iron-door
+  0x14A :door-iron
   0x14B :redstone
   0x14C :snowball
   0x14D :boat
@@ -313,7 +329,7 @@
   0x159 :compass
   0x15A :fishing-rod
   0x15B :clock
-  0x15C :glowstone-dust
+  0x15C :dust-glowstone
   0x15D :fish-raw
   0x15E :fish-cooked
   0x15F :ink-sac
@@ -326,11 +342,11 @@
   0x166 :map
   0x167 :shears
   0x168 :melon-slice
-  0x169 :pumpkin-seeds
-  0x16A :melon-seeds
-  0x16B :raw-beef
+  0x169 :seeds-pumpkin
+  0x16A :seeds-melon
+  0x16B :beef-raw
   0x16C :steak
-  0x16D :raw-chicken
+  0x16D :chicken-raw
   0x16E :cooked-chicken
   0x16F :rotten-flesh
   0x170 :ender-pearl
@@ -358,10 +374,10 @@
   0x186 :flower-pot
   0x187 :carrot
   0x188 :potato
-  0x189 :baked-potato
-  0x18A :poisonous-potato
+  0x189 :potato-baked
+  0x18A :potato-poisonous
   0x18B :map
-  0x18C :golden-carrot
+  0x18C :carrot-golden
   0x18D :head
   0x18E :carrot-on-a-stick
   0x18F :nether-star
