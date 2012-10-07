@@ -46,10 +46,7 @@
 ; Writing Packets ------------------------------------------------------------------
 (defn- write-packet-keepalive [conn {keep-alive-id :keep-alive-id}]
   (-write-int conn keep-alive-id))
-
-(defn- write-packet-handshake [conn {username :username}]
-  (-write-string-ucs2 conn username))
-
+; TODO Fix for 1.3.2
 (defn- write-packet-login [conn {version :version, username :username}]
   (-write-int conn version)
   (-write-string-ucs2 conn username)
@@ -60,6 +57,11 @@
   (-write-byte conn 0)
   (-write-byte conn 0)
   (-write-byte conn 0))
+
+(defn- write-packet-handshake [conn {username :username}]
+  (-write-string-ucs2 conn username)
+  (-write-string-ucs2 conn serverhost)
+  (-write-int conn serverport))
 
 (defn- write-packet-chat [conn {message :message}]
   (-write-string-ucs2 conn message))
@@ -205,7 +207,7 @@
 (defn- write-packet-closewindow [conn {windowid :windowid}]
   (-write-byte conn windowid))
 
-(defn- write-packet-windowclick [conn {windowid :windowid slot :slot rightclick :rightclick actionnumber :actionnumber shift :shift itemid :itemid itemcount :itemcount itemuses :itemuses}]
+(defn- write-packet-clickwindow [conn {windowid :windowid slot :slot rightclick :rightclick actionnumber :actionnumber shift :shift itemid :itemid itemcount :itemcount itemuses :itemuses}]
   (-write-byte conn windowid)
   (-write-short conn slot)
   (-write-byte conn rightclick)
@@ -237,39 +239,46 @@
   (-write-string-ucs2 conn reason))
 
 
-(def packet-writers {:keepalive            write-packet-keepalive
-                     :handshake            write-packet-handshake
-                     :login                write-packet-login
-                     :chat                 write-packet-chat
-                     :respawn              write-packet-respawn
-                     :player               write-packet-player
-                     :playerposition       write-packet-playerposition
-                     :playerlook           write-packet-playerlook
-                     :playerpositionlook   write-packet-playerpositionlook
-                     :playerdigging        write-packet-playerdigging
-                     :playerblockplacement write-packet-playerblockplacement
-                     :holdingchange        write-packet-holdingchange
-                     :usebed               write-packet-usebed
-                     :animation            write-packet-animation
-                     :entityaction         write-packet-entityaction
-                     :pickupspawn          write-packet-droppeditemspawn
-                     :entitypainting       write-packet-entitypainting
-                     :stanceupdate         write-packet-stanceupdate
-                     :entityvelocity       write-packet-entityvelocity
-                     :attachentity         write-packet-attachentity
-                     :entitymetadata       write-packet-entitymetadata
-                     :multiblockchange     write-packet-multiblockchange
-                     :blockchange          write-packet-blockchange
-                     :explosion            write-packet-explosion
-                     :soundeffect          write-packet-soundeffect
-                     :changegamestate      write-packet-changegamestate
-                     :openwindow           write-packet-openwindow
-                     :closewindow          write-packet-closewindow
-                     :windowclick          write-packet-windowclick
-                     :transaction          write-packet-transaction
-                     :updatesign           write-packet-updatesign
-                     :incrementstatistic   write-packet-incrementstatistic
-                     :disconnectkick       write-packet-disconnectkick})
+(def packet-writers {:keepalive               write-packet-keepalive
+                     :handshake               write-packet-handshake
+                     :login                   write-packet-login
+                     :chat                    write-packet-chat
+                     :useentity               write-packet-useentity
+                     :respawn                 write-packet-respawn
+                     :player                  write-packet-player
+                     :playerposition          write-packet-playerposition
+                     :playerlook              write-packet-playerlook
+                     :playerpositionlook      write-packet-playerpositionlook
+                     :playerdigging           write-packet-playerdigging
+                     :playerblockplacement    write-packet-playerblockplacement
+                     :holdingchange           write-packet-holdingchange
+                     :usebed                  write-packet-usebed
+                     :animation               write-packet-animation
+                     :entityaction            write-packet-entityaction
+                     :namedentityspawn        write-packet-namedentityspawn
+                     :droppeditemspawn        write-packet-droppeditemspawn
+                     :entitypainting          write-packet-entitypainting
+                     :stanceupdate            write-packet-stanceupdate
+                     :entityvelocity          write-packet-entityvelocity
+                     :attachentity            write-packet-attachentity
+                     :entitymetadata          write-packet-entitymetadata
+                     :multiblockchange        write-packet-multiblockchange
+                     :blockchange             write-packet-blockchange
+                     :explosion               write-packet-explosion
+                     :soundeffect             write-packet-soundeffect
+                     :changegamestate         write-packet-changegamestate
+                     :openwindow              write-packet-openwindow
+                     :windowclick             write-packet-windowclick
+                     :transaction             write-packet-transaction
+                     :creativeinventoryaction write-packet-creativeinventoryaction
+                     :enchantitem             write-packet-enchantitem
+                     :updatesign              write-packet-updatesign
+                     :playerabilities         write-packet-playerabilities
+                     :tabcomplete             write-packet-tabcomplete
+                     :pluginmessage           write-packet-pluginmessage
+                     :encryptionkeyresponse   write-packet-encryptionkeyresponse
+                     :incrementstatistic      write-packet-incrementstatistic
+                     :disconnectkick          write-packet-disconnectkick})
 
 ; Writing Wrappers -----------------------------------------------------------------
 (defn- flushc [conn]

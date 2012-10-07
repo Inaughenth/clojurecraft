@@ -679,7 +679,7 @@
          :windowtitle (-read-string-ucs2 conn)
          :numberofslots (-read-byte conn)))
 
-(defn- read-packet-closewindoww [bot conn]
+(defn- read-packet-closewindow [bot conn]
   (assoc {}
          :windowid (-read-byte conn)))
 
@@ -868,8 +868,8 @@
                      :changegamestate           read-packet-changegamestate
                      :thunderbolt               read-packet-thunderbolt
                      :openwindow                read-packet-openwindow
-                     :closewindow               read-packet-closewindoww
-                     :clickwindow               read-packet-closewindow
+                     :closewindow               read-packet-closewindow
+                     :clickwindow               read-packet-clickwindow
                      :setslot                   read-packet-setslot
                      :windowitems               read-packet-windowitems
                      :updatewindowproperty      read-packet-updatewindowproperty
