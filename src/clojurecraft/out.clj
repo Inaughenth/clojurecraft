@@ -125,7 +125,7 @@
   (-write-int conn eid)
   (-write-byte conn action))
 
-(defn- write-packet-pickupspawn [conn {eid :eid item :item count :count damagedata :damagedata x :x y :y z :z rotation :rotation pitch :pitch roll :roll}]
+(defn- write-packet-droppeditemspawn [conn {eid :eid item :item count :count damagedata :damagedata x :x y :y z :z rotation :rotation pitch :pitch roll :roll}]
   (-write-int conn eid)
   (-write-short conn item)
   (-write-byte conn count)
@@ -193,7 +193,7 @@
   (-write-int conn z)
   (-write-int conn sounddata))
 
-(defn- write-packet-newinvalidstate [conn {reason :reason}]
+(defn- write-packet-changegamestate [conn {reason :reason}]
   (-write-byte conn reason))
 
 (defn- write-packet-openwindow [conn {windowid :windowid inventorytype :inventorytype windowtitle :windowtitle numberofslots :numberofslots}]
@@ -252,7 +252,7 @@
                      :usebed               write-packet-usebed
                      :animation            write-packet-animation
                      :entityaction         write-packet-entityaction
-                     :pickupspawn          write-packet-pickupspawn
+                     :pickupspawn          write-packet-droppeditemspawn
                      :entitypainting       write-packet-entitypainting
                      :stanceupdate         write-packet-stanceupdate
                      :entityvelocity       write-packet-entityvelocity
@@ -262,7 +262,7 @@
                      :blockchange          write-packet-blockchange
                      :explosion            write-packet-explosion
                      :soundeffect          write-packet-soundeffect
-                     :newinvalidstate      write-packet-newinvalidstate
+                     :changegamestate      write-packet-changegamestate
                      :openwindow           write-packet-openwindow
                      :closewindow          write-packet-closewindow
                      :windowclick          write-packet-windowclick

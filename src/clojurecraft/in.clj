@@ -142,21 +142,23 @@
   (assoc {}
     :keep-alive-id (-read-int conn)))
 
-(defn- read-packet-handshake [bot conn]
-  (assoc {}
-         :hash (-read-string-ucs2 conn)))
-
 (defn- read-packet-login [bot conn]
   (assoc {}
          :eid (-read-int conn)
-         :unknown (-read-string-ucs2 conn)
-         :seed (-read-long conn)
          :leveltype (-read-string-ucs2 conn)
-         :servermode (-read-int conn)
+         :gamemode (-read-byte conn)
          :dimension (-read-byte conn)
          :difficulty (-read-byte conn)
-         :worldheight (-read-byte-unsigned conn)
+         :unknown (-read-byte-unsigned conn)
          :maxplayers (-read-byte-unsigned conn)))
+
+(defn- read-packet-handshake [bot conn]
+  (assoc {}
+         :hash (-read-string-ucs2 conn)
+         :protocolversion (-read-byte conn)
+         :username (-read-string-ucs2 conn)
+         :serverhost (-read-string-ucs2 conn)
+         :serverport (-read-int conn)))
 
 (defn- read-packet-chat [bot conn]
   (let [payload (assoc {}
@@ -174,8 +176,8 @@
   (assoc {}
          :eid (-read-int conn)
          :slot (-read-short conn)
-         :itemid (-read-short conn)
-         :unknown (-read-short conn)))
+         :itemid (-read-short conn)))
+
 
 (defn- read-packet-spawnposition [bot conn]
   (assoc {}
@@ -201,11 +203,10 @@
 
 (defn- read-packet-respawn [bot conn]
   (assoc {}
-         :world (-read-byte conn)
+         :dimension (-read-int conn)
          :difficulty (-read-byte conn)
          :creative (-read-byte conn)
          :worldheight (-read-short conn)
-         :mapseed (-read-long conn)
          :leveltype (-read-string-ucs2 conn)))
 
 (defn- read-packet-playerpositionlook [bot conn]
@@ -237,7 +238,10 @@
          :y (-read-byte conn)
          :z (-read-int conn)
          :direction (-read-byte conn)
-         :helditem (-read-slot conn)))
+         :helditem (-read-slot conn)
+         :cursorpositionx (-read-byte conn)
+         :cursorpositiony (-read-byte conn)
+         :cursorpositiony (-read-byte conn)))
 
 (defn- read-packet-holdingchange [bot conn]
   (assoc {}
@@ -261,6 +265,7 @@
          :eid (-read-int conn)
          :action (-read-byte conn)))
 
+;todo: Check against current spec
 (defn- read-packet-namedentityspawn [bot conn]
   (let [payload (assoc {}
                        :eid (-read-int conn)
@@ -289,7 +294,7 @@
         (alter entities assoc eid (ref (merge entity new-entity-data)))))
     payload))
 
-(defn- read-packet-pickupspawn [bot conn]
+(defn- read-packet-droppeditemspawn [bot conn]
   (assoc {}
          :eid (-read-int conn)
          :item (-read-short conn)
@@ -307,6 +312,7 @@
          :collectedeid (-read-int conn)
          :collectoreid (-read-int conn)))
 
+;todo: Check against current spec
 (defn- read-packet-addobjectvehicle [bot conn]
   (let [basepacket (assoc {}
                           :eid (-read-int conn)
@@ -331,6 +337,10 @@
          :z (-read-int conn)
          :yaw (-read-byte conn)
          :pitch (-read-byte conn)
+         :headyaw (-read-byte conn)
+         :velocityx (-read-short conn)
+         :velocityy (-read-short conn)
+         :velocityz (-read-short conn)
          :datastream (-read-metadata conn)))
 
 (defn- read-packet-entitypainting [bot conn]
@@ -424,6 +434,11 @@
         (alter entity assoc :loc new-loc)))
     payload))
 
+(defn- read-packet-headlook [bot conn]
+  (assoc {}
+         :eid (-read-int conn)
+         :headyaw (-read-byte conn)))
+
 (defn- read-packet-entitystatus [bot conn]
   (let [payload (assoc {}
                        :eid (-read-int conn)
@@ -460,14 +475,6 @@
                        :level (-read-short conn)
                        :totalexperience (-read-short conn))]
     payload))
-
-
-(defn- read-packet-prechunk [bot conn]
-  (assoc {}
-         :x (-read-int conn)
-         :z (-read-int conn)
-         :mode (-read-bool conn)))
-
 
 (defn- -parse-nibbles [len data]
   (loop [i 0
@@ -599,20 +606,37 @@
     payload))
 
 
-(defn- read-packet-playnoteblock [bot conn]
+(defn- read-packet-blockaction [bot conn]
   (assoc {}
          :x (-read-int conn)
          :y (-read-short conn)
          :z (-read-int conn)
-         :instrumenttype (-read-byte conn)
-         :pitch (-read-byte conn)))
+         :byte1 (-read-byte conn)
+         :byte2 (-read-byte conn)
+         :blockid (-read-short conn)))
+
+(defn- read-packet-blockbreakanimation [bot conn]
+  (assoc {}
+         :eid (-read-int conn)
+         :x (-read-int conn)
+         :y (-read-short conn)
+         :z (-read-int conn)
+         :destroystage (-read-byte conn)))
+
+(defn- read-packet-mapchunkbulk [bot conn]
+  (assoc {}
+         :chunkcount (-read-short conn)
+         :chunkdatalength (-read-int conn)
+         :data (-read-bytearray conn)
+         :metainformation (-read-metadata conn)));TODO correct type
+
 
 (defn- read-packet-explosion [bot conn]
   (let [prerecords (assoc {}
                           :x (-read-int conn)
                           :y (-read-short conn)
                           :z (-read-int conn)
-                          :unknownradius (-read-byte conn)
+                          :radius (-read-byte conn)
                           :recordcount (-read-byte conn))]
     (assoc prerecords
            :records (-read-bytearray conn
@@ -626,7 +650,16 @@
          :z (-read-int conn)
          :sounddata (-read-int conn)))
 
-(defn- read-packet-newinvalidstate [bot conn]
+(defn- read-packet-namedsoundeffect [bot conn]
+  (assoc {}
+         :soundneame (-read-int conn)
+         :x (-read-int conn)
+         :y (-read-int conn)
+         :z (-read-int conn)
+         :volume (-read-float conn)
+         :pitch (-read-byte conn)))
+
+(defn- read-packet-changegamestate [bot conn]
   (assoc {}
          :reason (-read-byte conn)
          :game-mode (-read-byte conn)))
@@ -646,9 +679,19 @@
          :windowtitle (-read-string-ucs2 conn)
          :numberofslots (-read-byte conn)))
 
-(defn- read-packet-closewindow [bot conn]
+(defn- read-packet-closewindoww [bot conn]
   (assoc {}
          :windowid (-read-byte conn)))
+
+(defn- read-packet-clickwindow [bot conn]
+  (assoc {}
+         :windowid (-read-byte conn)
+         :slot (-read-short conn)
+         :rightclick (-read-bool conn)
+         :actionnumber (-read-short conn)
+         :shift (-read-bool conn)
+         ;TODO fix this requies "slot" in wiki
+         :clickeditem (-read-byte conn)))
 
 (defn- read-packet-setslot [bot conn]
   (let [payload (assoc {}
@@ -665,7 +708,7 @@
                                  #(-read-slot conn)))]
     (assoc prepayload :items items)))
 
-(defn- read-packet-updateprogressbar [bot conn]
+(defn- read-packet-updatewindowproperty [bot conn]
   (assoc {}
     :windowid (-read-byte conn)
     :progressbar (-read-short conn)
@@ -697,13 +740,22 @@
     :text3 (-read-string-ucs2 conn)
     :text4 (-read-string-ucs2 conn)))
 
-(defn- read-packet-mapdata [bot conn]
+(defn- read-packet-itemdata [bot conn]
   ; TODO: Fix this
   (let [pretext (assoc {}
-                  :unknown1 (-read-int conn)
-                  :unknown2 (-read-short conn)
-                  :textlength (-read-int conn))]
+                  :itemtype (-read-short conn)
+                  :intemid (-read-short conn)
+                  :textlength (-read-byte-unsigned conn))]
     (assoc pretext :text (-read-bytearray (:textlength pretext)))))
+
+(defn- read-packet-updatetileentity [bot conn]
+  (assoc {}
+    :x (-read-int conn)
+    :y (-read-short conn)
+    :z (-read-int conn)
+    :action (-read-byte conn)
+    :datalength (-read-short conn)
+    :nbtdata (-read-bytearray conn)))
 
 (defn- read-packet-incrementstatistic [bot conn]
   (assoc {}
@@ -716,11 +768,51 @@
     :online (-read-bool conn)
     :ping (-read-short conn)))
 
+(defn- read-packet-playerabilities [bot conn]
+  (assoc {}
+    :flags (-read-byte conn)
+    :flyingspeed (-read-byte conn)
+    :walkingspeed (-read-byte conn)))
+
+(defn- read-packet-tabcomplete [bot conn]
+  (assoc {}
+    :text (-read-string-ucs2 conn)))
+
+(defn- read-packet-localeandviewdistance [bot conn]
+  (assoc {}
+    :locale (-read-string-ucs2 conn)
+    :viewdistance (-read-byte conn)
+    :chatflags (-read-byte conn)
+    :difficulty (-read-byte conn)))
+
+(defn- read-packet-clientstatuses [bot conn]
+  (assoc {}
+    :payload (-read-byte conn)))
+
 (defn- read-packet-pluginmessage [bot conn]
   (let [predata (assoc {}
                        :channel (-read-string-ucs2 conn)
                        :length (-read-short conn))]
     (assoc predata :data (-read-bytearray conn (:length predata)))))
+
+(defn- read-packet-encryptionkeyresponse [bot conn]
+  (assoc {}
+    :sharedsecretlength (-read-short conn)
+    :sharedsecret (-read-bytearray conn)
+    :verifytokenlength (-read-short conn)
+    :verifytokenresponse (-read-bytearray conn)))
+
+(defn- read-packet-encryptionkeyrequest [bot conn]
+  (assoc {}
+    :serverid (-read-string-ucs2 conn)
+    :publickeylength (-read-short conn)
+    :publickey (-read-bytearray conn)
+    :verifytokenlength (-read-short conn)
+    :verifytoken (-read-bytearray conn)))
+
+(defn- read-packet-serverlistping [bot conn]
+  (assoc {}
+    :reason (-read-string-ucs2 conn)))
 
 (defn- read-packet-disconnectkick [bot conn]
   (assoc {}
@@ -745,7 +837,7 @@
                      :animation                 read-packet-animation
                      :entityaction              read-packet-entityaction
                      :namedentityspawn          read-packet-namedentityspawn
-                     :pickupspawn               read-packet-pickupspawn
+                     :droppeditemspaw           read-packet-droppeditemspawn
                      :collectitem               read-packet-collectitem
                      :addobjectvehicle          read-packet-addobjectvehicle
                      :mobspawn                  read-packet-mobspawn
@@ -764,28 +856,39 @@
                      :entityeffect              read-packet-entityeffect
                      :removeentityeffect        read-packet-removeentityeffect
                      :experience                read-packet-experience
-                     :prechunk                  read-packet-prechunk
                      :mapchunk                  read-packet-mapchunk
                      :multiblockchange          read-packet-multiblockchange
                      :blockchange               read-packet-blockchange
-                     :playnoteblock             read-packet-playnoteblock
+                     :blockaction               read-packet-blockaction
+                     :blockbreakanimation       read-packet-blockbreakanimation
+                     :mapchunkbulk              read-packet-mapchunkbulk
                      :explosion                 read-packet-explosion
                      :soundeffect               read-packet-soundeffect
-                     :newinvalidstate           read-packet-newinvalidstate
+                     :namedsoundeffect          read-packet-namedsoundeffect 
+                     :changegamestate           read-packet-changegamestate
                      :thunderbolt               read-packet-thunderbolt
                      :openwindow                read-packet-openwindow
-                     :closewindow               read-packet-closewindow
+                     :closewindow               read-packet-closewindoww
+                     :clickwindow               read-packet-closewindow
                      :setslot                   read-packet-setslot
                      :windowitems               read-packet-windowitems
-                     :updateprogressbar         read-packet-updateprogressbar
+                     :updatewindowproperty      read-packet-updatewindowproperty
                      :transaction               read-packet-transaction
                      :creativeinventoryaction   read-packet-creativeinventoryaction
                      :enchantitem               read-packet-enchantitem
                      :updatesign                read-packet-updatesign
-                     :mapdata                   read-packet-mapdata
+                     :itemdata                  read-packet-itemdata
+                     :updatetileentity          read-packet-updatetileentity
                      :incrementstatistic        read-packet-incrementstatistic
                      :playerlistitem            read-packet-playerlistitem
+                     :playerabilities           read-packet-playerabilities
+                     :tabcomplete               read-packet-tabcomplete
+                     :localeandviewdistance     read-packet-localeandviewdistance
+                     :clientstatuses            read-packet-clientstatuses
                      :pluginmessage             read-packet-pluginmessage
+                     :encryptionkeyresponse     read-packet-encryptionkeyresponse
+                     :encryptionkeyrequest      read-packet-encryptionkeyrequest
+                     :serverlistping            read-packet-serverlistping
                      :disconnectkick            read-packet-disconnectkick})
 
 

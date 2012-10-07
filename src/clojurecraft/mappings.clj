@@ -24,7 +24,6 @@
   0x12 :animation
   0x13 :entityaction
   0x14 :namedentityspawn
-;  0x15 :pickupspawn -- changed in 1.3.2?
   0x15 :droppeditemspawn                 
   0x16 :collectitem
   0x17 :addobjectvehicle
@@ -45,31 +44,27 @@
   0x29 :entityeffect
   0x2A :removeentityeffect
   0x2B :experience
-  0x32 :prechunk ;missing in 1.3.2?
   0x33 :mapchunk
   0x34 :multiblockchange ;missing in 1.3.2?
   0x35 :blockchange
-;  0x36 :playnoteblock --changed in 1.3.2?
   0x36 :blockaction                 
   0x37 :blockbreakanimation
-  0x38 :mapchunckbulk                   
+  0x38 :mapchunkbulk                   
   0x3C :explosion
   0x3D :soundeffect
   0x3E :namedsoundeffect                   
-  0x46 :newinvalidstate
+  0x46 :changegamestate
   0x47 :thunderbolt
   0x64 :openwindow
   0x65 :closewindow
-  0x66 :windowclick
+  0x66 :clickwindow
   0x67 :setslot
   0x68 :windowitems
-;  0x69 :updateprogressbar  --changed in 1.3.2?
   0x69 :updatewindowproperty                 
   0x6A :transaction
   0x6B :creativeinventoryaction
   0x6C :enchantitem
   0x82 :updatesign
-;  0x83 :mapdata  --changed in 1.3.2?
   0x83 :itemdata
   0x84 :updatetileentity                
   0xC8 :incrementstatistic
