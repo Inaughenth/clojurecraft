@@ -58,13 +58,20 @@
   (-write-byte conn 0)
   (-write-byte conn 0))
 
-(defn- write-packet-handshake [conn {username :username}]
+(defn- write-packet-handshake [conn {hash :hash, protocolversion :protocolversion, username :username, serverhost :serverhost, serverport :serverport}]
+  (-write-string-ucs2 conn hash)
+  (-write-byte conn protocolversion)
   (-write-string-ucs2 conn username)
   (-write-string-ucs2 conn serverhost)
   (-write-int conn serverport))
 
 (defn- write-packet-chat [conn {message :message}]
   (-write-string-ucs2 conn message))
+
+(defn- write-packet-useentity [conn {user :user, target :target, mousebutton :mousebutton}]
+  (-write-int conn user)
+  (-write-int conn target)
+  (-write-bool conn mousebutton))
 
 (defn- write-packet-respawn [conn {world :world}]
   (-write-byte conn world))
@@ -231,6 +238,35 @@
   (-write-string-ucs2 conn text3)
   (-write-string-ucs2 conn text4))
 
+;TODO Fix clickeditem conn
+(defn- write-packet-creativeinventoryaction [conn {slot :slot, clickeditem :clickeditem}]
+  (-write-byte conn slot)
+  (-write-short conn clickeditem))
+
+(defn- write-packet-enchantitem [conn {windowid :windowid, enchantment :enchantment}]
+  (-write-byte conn windowid)
+  (-write-byte conn enchantment))
+
+(defn- write-packet-playerabilities [conn {flags :flags, flyingspeed :flyingspeed, walkingspeed :walkingspeed}]
+  (-write-byte conn flags)
+  (-write-byte conn flyingspeed)
+  (-write-byte conn walkingspeed))
+
+(defn- write-packet-tabcomplete [conn {text :text}]
+  (-write-string-ucs2 conn text)
+  (-write-byte conn ))
+
+(defn- write-packet-pluginmessage [conn {channel :channel, length :length, data :data}]
+  (-write-string-ucs2 conn channel)
+  (-write-short conn length)
+  (-write-bytearray conn data))
+
+(defn- write-packet-encryptionkeyresponse [conn {sharedsecretlength :sharedsecretlength, sharedsecret :sharedsecret, verifytokenlength :verifytokenlength, verifytokenresponse :verifytokenresponse}]
+  (-write-short conn sharedsecretlength)
+  (-write-bytearray conn sharedsecret)
+  (-write-short conn verifytokenlength)
+  (-write-bytearray conn verifytokenresponse))
+
 (defn- write-packet-incrementstatistic [conn {statisticid :statisticid amount :amount}]
   (-write-int conn statisticid)
   (-write-byte conn amount))
@@ -255,7 +291,6 @@
                      :usebed                  write-packet-usebed
                      :animation               write-packet-animation
                      :entityaction            write-packet-entityaction
-                     :namedentityspawn        write-packet-namedentityspawn
                      :droppeditemspawn        write-packet-droppeditemspawn
                      :entitypainting          write-packet-entitypainting
                      :stanceupdate            write-packet-stanceupdate
@@ -268,7 +303,7 @@
                      :soundeffect             write-packet-soundeffect
                      :changegamestate         write-packet-changegamestate
                      :openwindow              write-packet-openwindow
-                     :windowclick             write-packet-windowclick
+                     :windowclick             write-packet-clickwindow
                      :transaction             write-packet-transaction
                      :creativeinventoryaction write-packet-creativeinventoryaction
                      :enchantitem             write-packet-enchantitem
