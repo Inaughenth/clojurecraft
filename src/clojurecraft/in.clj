@@ -8,8 +8,7 @@
   (:import [clojurecraft.data Location Entity Chunk])
   (:import (java.util.zip Inflater)))
 
-
-(def FULL-CHUNK (* 16 16 128))
+(def FULL-CHUNK (* 16 16 256))
 (def BLANK-CHUNK-ARRAY (byte-array FULL-CHUNK))
 
 ; Convenience Functions ------------------------------------------------------------
@@ -32,7 +31,6 @@
   0x132 0x133 0x134 0x135
   0x136 0x137 0x138 0x139
   0x13A 0x13B 0x13C 0x13D })
-
 
 ; Reading Data ---------------------------------------------------------------------
 (defn- -read-byte-bare [conn]
@@ -138,27 +136,25 @@
 
 
 ; Reading Packets ------------------------------------------------------------------
+
 (defn- read-packet-keepalive [bot conn]
   (assoc {}
     :keep-alive-id (-read-int conn)))
 
+(defn- read-packet-handshake [bot conn]
+  (assoc {}
+         :hash (-read-string-ucs2 conn)))
+
 (defn- read-packet-login [bot conn]
   (assoc {}
          :eid (-read-int conn)
+         :unknown1 (-read-string-ucs2 conn)
          :leveltype (-read-string-ucs2 conn)
-         :gamemode (-read-byte conn)
-         :dimension (-read-byte conn)
+         :servermode (-read-int conn)
+         :dimensione(-read-int conn)
          :difficulty (-read-byte conn)
-         :unknown (-read-byte-unsigned conn)
+         :unknown2 (-read-byte-unsigned conn)
          :maxplayers (-read-byte-unsigned conn)))
-
-(defn- read-packet-handshake [bot conn]
-  (assoc {}
-         :hash (-read-string-ucs2 conn)
-         :protocolversion (-read-byte conn)
-         :username (-read-string-ucs2 conn)
-         :serverhost (-read-string-ucs2 conn)
-         :serverport (-read-int conn)))
 
 (defn- read-packet-chat [bot conn]
   (let [payload (assoc {}
@@ -176,8 +172,8 @@
   (assoc {}
          :eid (-read-int conn)
          :slot (-read-short conn)
-         :itemid (-read-short conn)))
-
+         :itemid (-read-short conn)
+         :damage (-read-short conn)))
 
 (defn- read-packet-spawnposition [bot conn]
   (assoc {}
@@ -197,6 +193,7 @@
                        :health (-read-short conn)
                        :food (-read-short conn)
                        :foodsaturation (-read-float conn))]
+    (println payload)
     (if (<= (:health payload) 0)
       (events/fire-dead bot))
     payload))
@@ -238,10 +235,7 @@
          :y (-read-byte conn)
          :z (-read-int conn)
          :direction (-read-byte conn)
-         :helditem (-read-slot conn)
-         :cursorpositionx (-read-byte conn)
-         :cursorpositiony (-read-byte conn)
-         :cursorpositiony (-read-byte conn)))
+         :helditem (-read-slot conn)))
 
 (defn- read-packet-holdingchange [bot conn]
   (assoc {}
@@ -265,7 +259,6 @@
          :eid (-read-int conn)
          :action (-read-byte conn)))
 
-;todo: Check against current spec
 (defn- read-packet-namedentityspawn [bot conn]
   (let [payload (assoc {}
                        :eid (-read-int conn)
@@ -294,7 +287,7 @@
         (alter entities assoc eid (ref (merge entity new-entity-data)))))
     payload))
 
-(defn- read-packet-droppeditemspawn [bot conn]
+(defn- read-packet-pickupspawn [bot conn]
   (assoc {}
          :eid (-read-int conn)
          :item (-read-short conn)
@@ -312,7 +305,6 @@
          :collectedeid (-read-int conn)
          :collectoreid (-read-int conn)))
 
-;todo: Check against current spec
 (defn- read-packet-addobjectvehicle [bot conn]
   (let [basepacket (assoc {}
                           :eid (-read-int conn)
@@ -338,9 +330,6 @@
          :yaw (-read-byte conn)
          :pitch (-read-byte conn)
          :headyaw (-read-byte conn)
-         :velocityx (-read-short conn)
-         :velocityy (-read-short conn)
-         :velocityz (-read-short conn)
          :datastream (-read-metadata conn)))
 
 (defn- read-packet-entitypainting [bot conn]
@@ -434,10 +423,10 @@
         (alter entity assoc :loc new-loc)))
     payload))
 
-(defn- read-packet-headlook [bot conn]
+(defn- read-packet-entityheadlook [bot conn]
   (assoc {}
          :eid (-read-int conn)
-         :headyaw (-read-byte conn)))
+         :entitystatus (-read-byte conn)))
 
 (defn- read-packet-entitystatus [bot conn]
   (let [payload (assoc {}
@@ -476,16 +465,24 @@
                        :totalexperience (-read-short conn))]
     payload))
 
-(defn- -parse-nibbles [len data]
+
+(defn- read-packet-prechunk [bot conn]
+  (assoc {}
+         :x (-read-int conn)
+         :z (-read-int conn)
+         :mode (-read-bool conn)))
+
+
+(defn- -parse-nibbles [data start]
   (loop [i 0
          nibbles []
-         data data]
-    (if (= i len)
-      [(byte-array nibbles) data]
-      (let [next-byte (get data 0)
+         data (subvec data start)]
+    (if (= i 2048)
+      nibbles
+      (let [next-byte (first data)
             top-byte (top next-byte)
             bottom-byte (bottom next-byte)]
-        (recur (+ i 2)
+        (recur (+ i 1)
                (conj nibbles bottom-byte top-byte)
                (subvec data 1))))))
 
@@ -494,48 +491,63 @@
       (let [chunk (ref (Chunk. BLANK-CHUNK-ARRAY
                                BLANK-CHUNK-ARRAY
                                BLANK-CHUNK-ARRAY
+                               BLANK-CHUNK-ARRAY
+                               BLANK-CHUNK-ARRAY
                                BLANK-CHUNK-ARRAY))]
         (alter chunks assoc coords chunk)
         chunk)))
 
-(defn- -decode-mapchunk [postdata data-ba]
-  (let [len (* (:sizex postdata) (:sizey postdata) (:sizez postdata))
-        data (into (vector-of :byte) data-ba) ; Make the data a vector for easier parsing.
-        block-types (byte-array (subvec data 0 len))
-        data (subvec data len)]
-    (let [[block-metadata data] (-parse-nibbles len data)
-          [block-light data] (-parse-nibbles len data)
-          [sky-light data] (-parse-nibbles len data)]
-      [block-types block-metadata block-light sky-light])))
+(defn- -decode-mapchunk [{:keys [primarybitmap]} data-ba]
+  (let [init-seq (vec (take (* (/ (inc primarybitmap) 16) 4096) (cycle [nil])))]
+    (loop [len (true-bit-count primarybitmap)
+           data data-ba
+           block-types init-seq
+           block-metadata init-seq
+           block-light init-seq
+           sky-light init-seq
+           add-array init-seq]
+      (if (> len 0)
+        (recur
+          (dec len)
+          (subvec data 12288)
+          (concat block-types (subvec data 0 4096))
+          (concat block-metadata (-parse-nibbles data 4096))
+          (concat block-light (-parse-nibbles data 6144))
+          (concat sky-light (-parse-nibbles data 8193))
+          (concat add-array (-parse-nibbles data 10240)))
+        [(vec block-types) 
+         (vec block-metadata)
+         (vec block-light) 
+         (vec sky-light)
+         (if (nil? data)
+           []
+           (subvec data 0 256))]))))
 
-(defn- -decompress-mapchunk [postdata]
-  (let [buffer (byte-array (/ (* 5
-                                 (:sizex postdata)
-                                 (:sizey postdata)
-                                 (:sizez postdata)) 2))
+(defn- -decompress-mapchunk [{:keys [groundupcontinuous primarybitmap] :as postdata}]
+  (let [biome-count (if groundupcontinuous 256 0)
+        buffer (byte-array (+ (* 12288 (true-bit-count primarybitmap)) biome-count))
         decompressor (Inflater.)]
     (.setInput decompressor (:raw-data postdata) 0 (:compressedsize postdata))
     (.inflate decompressor buffer)
     (.end decompressor)
-    buffer))
+    (vec buffer)))
 
 (defn- -read-mapchunk-predata [conn]
   (assoc {}
          :x (-read-int conn)
-         :y (-read-short conn)
          :z (-read-int conn)
-         :sizex (+ 1 (-read-byte conn))
-         :sizey (+ 1 (-read-byte conn))
-         :sizez (+ 1 (-read-byte conn))
-         :compressedsize (-read-int conn)))
-
+         :groundupcontinuous (-read-bool conn)
+         :primarybitmap (-read-short conn)
+         :addbitmap (-read-short conn)
+         :compressedsize (-read-int conn)
+         :unknown (-read-int conn)))
 
 (defn- -chunk-from-full-data [postdata]
   (let [decompressed-data (-decompress-mapchunk postdata)
-        [types meta light sky] (-decode-mapchunk postdata decompressed-data)] ; These are all byte-array's!
-    (Chunk. types meta light sky)))
+       [types meta light sky add biome] (-decode-mapchunk postdata decompressed-data)] ; These are all byte-array's!
+    (Chunk. types meta light sky add biome)))
 
-(defn- -chunk-from-partial-data [{{chunks :chunks} :world} postdata]
+(comment (defn- -chunk-from-partial-data [{{chunks :chunks} :world} postdata]
   (let [x (:x postdata)
         y (:y postdata)
         z (:z postdata)
@@ -548,20 +560,18 @@
             (replace-array-slice (:metadata (force @chunk)) start-index meta)
             (replace-array-slice (:light (force @chunk)) start-index light)
             (replace-array-slice (:sky-light (force @chunk)) start-index sky))))
+)
 
 (defn- read-packet-mapchunk [bot conn]
   (let [predata (-read-mapchunk-predata conn)
-        postdata (assoc predata :raw-data (-read-bytearray-bare conn
-                                                                (:compressedsize predata)))
-        chunk-size (* (:sizex postdata) (:sizey postdata) (:sizez postdata))
-        chunk-coords (coords-of-chunk-containing (:x postdata) (:z postdata))]
+        postdata (assoc predata :raw-data (-read-bytearray-bare conn (:compressedsize predata)))
+
+        chunk-coords [(:x postdata) (:z postdata)]
+        data-ba (-decompress-mapchunk postdata)]
     (dosync (alter (:chunks (:world bot))
-                   assoc chunk-coords (if (= FULL-CHUNK chunk-size)
-                                        (ref (delay (-chunk-from-full-data postdata)))
-                                        (ref (-chunk-from-partial-data bot postdata)))))
+                   assoc chunk-coords 
+                   (ref (delay (-chunk-from-full-data postdata)))))
     predata))
-
-
 
 (defn update-delayed [chunk index type meta]
   (let [chunk (force chunk)]
@@ -573,6 +583,8 @@
   (dosync
     (let [chunk (chunk-containing x z (:chunks (:world bot)))
           i (block-index-in-chunk x y z)]
+      ;(println x y z type i)
+      
       (when chunk
         (alter chunk update-delayed i type meta)))))
 
@@ -583,60 +595,54 @@
                     :z (-read-int conn)
                     :blocktype (-read-byte conn)
                     :blockmetadata (-read-byte conn))]
+    ;(println (:x data) (:y data) (:z data))
     (-update-single-block bot
                           (:x data) (:y data) (:z data)
                           (:blocktype data) (:blockmetadata data))
     data))
 
+(defn- -bytearray-to-num [bytearray]
+  (reduce + (map pow (reverse bytearray) (iterate inc 0))))
+
 (defn- read-packet-multiblockchange [bot conn]
   (let [prearrays (assoc {}
-                         :chunkx (-read-int conn)
-                         :chunkz (-read-int conn)
-                         :arraysize (-read-short conn))
-        payload (assoc prearrays
-                       :coordinatearray (-read-shortarray conn (:arraysize prearrays))
-                       :typearray (-read-bytearray conn (:arraysize prearrays))
-                       :metadataarray (-read-bytearray conn (:arraysize prearrays)))
-        parse-coords (fn [s] [(top-4 s) (mid-4 s) (bottom-8 s)])
-        coords (map parse-coords (:coordinatearray payload))]
-    (dorun (map #(-update-single-block bot (get %1 0) (get %1 2) (get %1 1) %2 %3)
-                coords
-                (:typearray payload)
-                (:metadataarray payload)))
-    payload))
+                         :x (-read-int conn)
+                         :z (-read-int conn)
+                         :arraysize (-read-short conn)
+                         :datasize (-read-int conn)
+                         :dataarray [])]
+    (let [payload (loop [i 0
+                         payload prearrays]
+                    (if (= i (:arraysize prearrays))
+                           payload
+                           (recur (inc i)
+                                  (assoc payload
+                                         :dataarray
+                                         (conj (:dataarray payload) (-read-int conn))))))]
+      (dorun (map 
+               #(-update-single-block bot
+                                      (* (bit-shift-right (bit-and % 0xf0000000) 28) (:x payload))  ;x coords
+                                      (bit-shift-right (bit-and % 0xff0000) 16)  ;y coords
+                                      (* (bit-shift-right (bit-and % 0xf000000) 24) (:z payload))  ;z coords
+                                      (bit-and % 0xf)  ;block id
+                                      (bit-shift-right (bit-and % 0xfff0) 4))  ;meta data                              
+               (:dataarray payload))) payload)))
 
 
-(defn- read-packet-blockaction [bot conn]
+(defn- read-packet-playnoteblock [bot conn]
   (assoc {}
          :x (-read-int conn)
          :y (-read-short conn)
          :z (-read-int conn)
-         :byte1 (-read-byte conn)
-         :byte2 (-read-byte conn)
-         :blockid (-read-short conn)))
-
-(defn- read-packet-blockbreakanimation [bot conn]
-  (assoc {}
-         :eid (-read-int conn)
-         :x (-read-int conn)
-         :y (-read-short conn)
-         :z (-read-int conn)
-         :destroystage (-read-byte conn)))
-
-(defn- read-packet-mapchunkbulk [bot conn]
-  (assoc {}
-         :chunkcount (-read-short conn)
-         :chunkdatalength (-read-int conn)
-         :data (-read-bytearray conn)
-         :metainformation (-read-metadata conn)));TODO correct type
-
+         :instrumenttype (-read-byte conn)
+         :pitch (-read-byte conn)))
 
 (defn- read-packet-explosion [bot conn]
   (let [prerecords (assoc {}
                           :x (-read-int conn)
                           :y (-read-short conn)
                           :z (-read-int conn)
-                          :radius (-read-byte conn)
+                          :unknownradius (-read-byte conn)
                           :recordcount (-read-byte conn))]
     (assoc prerecords
            :records (-read-bytearray conn
@@ -650,16 +656,7 @@
          :z (-read-int conn)
          :sounddata (-read-int conn)))
 
-(defn- read-packet-namedsoundeffect [bot conn]
-  (assoc {}
-         :soundneame (-read-int conn)
-         :x (-read-int conn)
-         :y (-read-int conn)
-         :z (-read-int conn)
-         :volume (-read-float conn)
-         :pitch (-read-byte conn)))
-
-(defn- read-packet-changegamestate [bot conn]
+(defn- read-packet-newinvalidstate [bot conn]
   (assoc {}
          :reason (-read-byte conn)
          :game-mode (-read-byte conn)))
@@ -683,16 +680,6 @@
   (assoc {}
          :windowid (-read-byte conn)))
 
-(defn- read-packet-clickwindow [bot conn]
-  (assoc {}
-         :windowid (-read-byte conn)
-         :slot (-read-short conn)
-         :rightclick (-read-bool conn)
-         :actionnumber (-read-short conn)
-         :shift (-read-bool conn)
-         ;TODO fix this requies "slot" in wiki
-         :clickeditem (-read-byte conn)))
-
 (defn- read-packet-setslot [bot conn]
   (let [payload (assoc {}
                        :windowid (-read-byte conn)
@@ -708,7 +695,7 @@
                                  #(-read-slot conn)))]
     (assoc prepayload :items items)))
 
-(defn- read-packet-updatewindowproperty [bot conn]
+(defn- read-packet-updateprogressbar [bot conn]
   (assoc {}
     :windowid (-read-byte conn)
     :progressbar (-read-short conn)
@@ -740,22 +727,23 @@
     :text3 (-read-string-ucs2 conn)
     :text4 (-read-string-ucs2 conn)))
 
-(defn- read-packet-itemdata [bot conn]
+(defn- read-packet-mapdata [bot conn]
   ; TODO: Fix this
   (let [pretext (assoc {}
-                  :itemtype (-read-short conn)
-                  :intemid (-read-short conn)
-                  :textlength (-read-byte-unsigned conn))]
+                  :unknown1 (-read-int conn)
+                  :unknown2 (-read-short conn)
+                  :textlength (-read-int conn))]
     (assoc pretext :text (-read-bytearray (:textlength pretext)))))
 
 (defn- read-packet-updatetileentity [bot conn]
   (assoc {}
-    :x (-read-int conn)
-    :y (-read-short conn)
-    :z (-read-int conn)
-    :action (-read-byte conn)
-    :datalength (-read-short conn)
-    :nbtdata (-read-bytearray conn)))
+         :x (-read-int conn)
+         :y (-read-short conn)
+         :z (-read-int conn)
+         :action (-read-byte conn)
+         :custom1 (-read-int conn)
+         :custom2 (-read-int conn)
+         :custom3 (-read-int conn)))
 
 (defn- read-packet-incrementstatistic [bot conn]
   (assoc {}
@@ -770,49 +758,16 @@
 
 (defn- read-packet-playerabilities [bot conn]
   (assoc {}
-    :flags (-read-byte conn)
-    :flyingspeed (-read-byte conn)
-    :walkingspeed (-read-byte conn)))
-
-(defn- read-packet-tabcomplete [bot conn]
-  (assoc {}
-    :text (-read-string-ucs2 conn)))
-
-(defn- read-packet-localeandviewdistance [bot conn]
-  (assoc {}
-    :locale (-read-string-ucs2 conn)
-    :viewdistance (-read-byte conn)
-    :chatflags (-read-byte conn)
-    :difficulty (-read-byte conn)))
-
-(defn- read-packet-clientstatuses [bot conn]
-  (assoc {}
-    :payload (-read-byte conn)))
+         :invulnerability (-read-bool conn)
+         :isflying (-read-bool conn)
+         :canfly (-read-bool conn)
+         :instantdestroy (-read-bool conn)))
 
 (defn- read-packet-pluginmessage [bot conn]
   (let [predata (assoc {}
                        :channel (-read-string-ucs2 conn)
                        :length (-read-short conn))]
     (assoc predata :data (-read-bytearray conn (:length predata)))))
-
-(defn- read-packet-encryptionkeyresponse [bot conn]
-  (assoc {}
-    :sharedsecretlength (-read-short conn)
-    :sharedsecret (-read-bytearray conn)
-    :verifytokenlength (-read-short conn)
-    :verifytokenresponse (-read-bytearray conn)))
-
-(defn- read-packet-encryptionkeyrequest [bot conn]
-  (assoc {}
-    :serverid (-read-string-ucs2 conn)
-    :publickeylength (-read-short conn)
-    :publickey (-read-bytearray conn)
-    :verifytokenlength (-read-short conn)
-    :verifytoken (-read-bytearray conn)))
-
-(defn- read-packet-serverlistping [bot conn]
-  (assoc {}
-    :reason (-read-string-ucs2 conn)))
 
 (defn- read-packet-disconnectkick [bot conn]
   (assoc {}
@@ -837,7 +792,7 @@
                      :animation                 read-packet-animation
                      :entityaction              read-packet-entityaction
                      :namedentityspawn          read-packet-namedentityspawn
-                     :droppeditemspaw           read-packet-droppeditemspawn
+                     :pickupspawn               read-packet-pickupspawn
                      :collectitem               read-packet-collectitem
                      :addobjectvehicle          read-packet-addobjectvehicle
                      :mobspawn                  read-packet-mobspawn
@@ -850,47 +805,38 @@
                      :entitylook                read-packet-entitylook
                      :entitylookandrelativemove read-packet-entitylookandrelativemove
                      :entityteleport            read-packet-entityteleport
+                     :entityheadlook            read-packet-entityheadlook
                      :entitystatus              read-packet-entitystatus
                      :attachentity              read-packet-attachentity
                      :entitymetadata            read-packet-entitymetadata
                      :entityeffect              read-packet-entityeffect
                      :removeentityeffect        read-packet-removeentityeffect
                      :experience                read-packet-experience
+                     :prechunk                  read-packet-prechunk
                      :mapchunk                  read-packet-mapchunk
                      :multiblockchange          read-packet-multiblockchange
                      :blockchange               read-packet-blockchange
-                     :blockaction               read-packet-blockaction
-                     :blockbreakanimation       read-packet-blockbreakanimation
-                     :mapchunkbulk              read-packet-mapchunkbulk
+                     :playnoteblock             read-packet-playnoteblock
                      :explosion                 read-packet-explosion
                      :soundeffect               read-packet-soundeffect
-                     :namedsoundeffect          read-packet-namedsoundeffect 
-                     :changegamestate           read-packet-changegamestate
+                     :newinvalidstate           read-packet-newinvalidstate
                      :thunderbolt               read-packet-thunderbolt
                      :openwindow                read-packet-openwindow
                      :closewindow               read-packet-closewindow
-                     :clickwindow               read-packet-clickwindow
                      :setslot                   read-packet-setslot
                      :windowitems               read-packet-windowitems
-                     :updatewindowproperty      read-packet-updatewindowproperty
+                     :updateprogressbar         read-packet-updateprogressbar
                      :transaction               read-packet-transaction
                      :creativeinventoryaction   read-packet-creativeinventoryaction
                      :enchantitem               read-packet-enchantitem
                      :updatesign                read-packet-updatesign
-                     :itemdata                  read-packet-itemdata
+                     :mapdata                   read-packet-mapdata
                      :updatetileentity          read-packet-updatetileentity
                      :incrementstatistic        read-packet-incrementstatistic
                      :playerlistitem            read-packet-playerlistitem
                      :playerabilities           read-packet-playerabilities
-                     :tabcomplete               read-packet-tabcomplete
-                     :localeandviewdistance     read-packet-localeandviewdistance
-                     :clientstatuses            read-packet-clientstatuses
                      :pluginmessage             read-packet-pluginmessage
-                     :encryptionkeyresponse     read-packet-encryptionkeyresponse
-                     :encryptionkeyrequest      read-packet-encryptionkeyrequest
-                     :serverlistping            read-packet-serverlistping
                      :disconnectkick            read-packet-disconnectkick})
-
 
 ; Reading Wrappers -----------------------------------------------------------------
 (defn read-packet [bot prev prev-prev prev-prev-prev]
@@ -910,6 +856,7 @@
                  (inc current))))
 
       ; Handle packet
+      ;(println packet-type)
       (if (nil? packet-type)
         (do
           (println "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")

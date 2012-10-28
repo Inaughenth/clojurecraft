@@ -7,7 +7,7 @@
 (defn- get-chunk
   "Get a chunk, making sure it has been forced."
   [chunks coords]
-  (let [possible-chunk (@chunks coords)]
+  (let [possible-chunk (get @chunks coords)]
     (when possible-chunk
       (force @possible-chunk)
       possible-chunk)))
@@ -20,16 +20,17 @@
   "Return the index of the block at given world coordinates in the chunk data arrays."
   [x y z]
   (let [ix (bit-and x 15)
-        iy (bit-and y 127)
+        iy (bit-and y 15)
         iz (bit-and z 15)]
-    (+ iy (* iz 128) (* ix 128 16))))
+    (+ (* (int (/ y 16)) 4096) (* iy 16) (* iz 16 16) ix)))
 
 (defn block-from-chunk [x y z chunk]
   (let [i (block-index-in-chunk x y z)
-        block-type (aget ^bytes (:types (force @chunk)) i)
-        block-meta (aget ^bytes (:metadata (force @chunk)) i)
-        block-light (aget ^bytes (:light (force @chunk)) i)
-        block-sky-light (aget ^bytes (:sky-light (force @chunk)) i)]
+        block-type (get (:types (force @chunk)) i)
+        block-meta (get (:metadata (force @chunk)) i)
+        block-light (get (:light (force @chunk)) i)
+        block-sky-light (get (:sky-light (force @chunk)) i)]
+    
     (Block. [x y z]
             (block-types (int block-type))
             block-meta

@@ -34,9 +34,8 @@
 (defn replace-array-index
   "Return a new byte-array with the given byte replaced."
   [old-arr i b]
-  (let [new-arr (byte-array old-arr)]
-    (aset-byte new-arr i b)
-    new-arr))
+  (let [new-arr old-arr]
+    (assoc new-arr i b)))
 
 (defn sign [i]
   (if (> i 0) 1 -1))
@@ -47,6 +46,14 @@
 (defn any? [s]
   (seq (filter identity s)))
 
+(defn pow [number index]
+  (loop [i 1
+         a 1]
+    (if (> i index)
+      a
+      (recur
+        (inc i)
+        (* a number)))))
 
 ; Bytes ----------------------------------------------------------------------------
 (defn byte-seq [b]
@@ -54,6 +61,34 @@
     (if (< n 8)
       (recur (inc n) (bit-shift-right b 1) (conj s (bit-and b 1)))
       (reverse s))))
+
+(defn nbyte-seq [b]
+  (loop [s []
+         b b]
+    (if (> b 0)
+      (recur
+        (cons (bit-and b 1) s)
+        (bit-shift-right b 1))
+      (vec s))))
+
+(defmulti true-bit-count class)
+
+(defmethod true-bit-count Number [b]
+  (true-bit-count (nbyte-seq b)))
+
+(defmethod true-bit-count clojure.lang.PersistentVector [s]
+  (loop [s s
+         i 0]
+    (if (= (count s) 0)
+      i
+      (recur
+        (pop s)
+        (if (= (peek s) 1)
+          (inc i)
+          i)))))
+
+(defmethod true-bit-count nil [n]
+  0)
 
 (defn top [b]
   (byte (bit-shift-right (bit-and b 0xf0) 4)))

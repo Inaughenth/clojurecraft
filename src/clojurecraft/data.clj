@@ -59,7 +59,7 @@
 ; light     -> byte-array
 ; sky-light -> byte-array
 ;
-(defrecord Chunk [types metadata light sky-light])
+(defrecord Chunk [types metadata light sky-light add biome])
 
 ; World
 ;
